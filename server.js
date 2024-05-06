@@ -2,52 +2,61 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const passport = require('passport');
-const passportSaml = require('passport-saml');
+const OneLoginStrategy = require('passport-openidconnect').Strategy;
 const app = express();
-var session = require('express-session');
 
-passport.serializeUser((user, done) => {
-done(null, user);
-});
+const baseUri = `${ process.env.OIDC_BASE_URI }/oidc/2`;
 
-passport.deserializeUser((user, done) => {
-done(null, user);
-});
-
-// SAML strategy for passport -- Single IPD
-const strategy = new passportSaml.Strategy(
-{
-    entryPoint: process.env.ENTRY_POINT,
-    issuer: process.env.ISSUER,
-    callbackUrl: process.env.CALLBACK_URL,
-    cert: process.env.CERT
+  passport.use(new OneLoginStrategy({
+  issuer: baseUri,
+  clientID: process.env.OIDC_CLIENT_ID,
+  clientSecret: process.env.OIDC_CLIENT_SECRET,
+  authorizationURL: `${baseUri}/auth`,
+  userInfoURL: `${baseUri}/me`,
+  tokenURL: `${baseUri}/token`,
+  callbackURL: process.env.OIDC_REDIRECT_URI,
+  passReqToCallback: true
 },
-(profile, done) => done(null, profile),
-);
+function(req, issuer, userId, profile, accessToken, refreshToken, params, cb) {
 
-passport.use(strategy);
-  
+  console.log('issuer:', issuer);
+  console.log('userId:', userId);
+  console.log('accessToken:', accessToken);
+  console.log('refreshToken:', refreshToken);
+  console.log('params:', params);
+
+  req.session.accessToken = accessToken;
+
+  return cb(null, profile);
+}));
+
+  passport.serializeUser((user, done) => {
+    done(null, user);
+  });
+
+  passport.deserializeUser((user, done) => {
+    done(null, user);
+  });
+
 app.use(cors());
 app.use(express.json());
-app.use(session({ secret: '3test', resave: false, saveUninitialized: false }));
+app.use(require('express-session')({ secret: 'test1300', resave: false, saveUninitialized: false }));
 app.use(passport.initialize());
 app.use(passport.session());
 
 app.get("/login/sso",
-    passport.authenticate("saml", 
+    passport.authenticate('openidconnect', 
     {
-        successRedirect: '/',
-        failureRedirect: '/failure',
-        failureFlash: true
-    }),
-    function (req, res) {
-      res.redirect("/");
-    },
+        successReturnToOrRedirect: "/",
+        scope: 'profile'
+    })
   );
 
-app.get('/callback', (req, res) => {
-    res.json({ message: "Got callback!" });
-});
+app.get('/oauth/callback', passport.authenticate('openidconnect', {
+    callback: true,
+    successReturnToOrRedirect: '/success',
+    failureRedirect: '/'
+  }));
 
 app.get('/success', (req, res) => {
     res.redirect('http://localhost:3000/home');
