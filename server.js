@@ -4,18 +4,27 @@ const cors = require('cors');
 const passport = require('passport');
 const OneLoginStrategy = require('passport-openidconnect').Strategy;
 const app = express();
+var _token="";
+
+app.use(cors());
+app.use(express.json());
+app.use(require('express-session')({ secret: 'test100', resave: false, saveUninitialized: false }));
+app.use(passport.initialize());
+app.use(passport.session());
+
+var home = require('./home');
 
 const baseUri = `${ process.env.OIDC_BASE_URI }/oidc/2`;
 
-  passport.use(new OneLoginStrategy({
-  issuer: baseUri,
-  clientID: process.env.OIDC_CLIENT_ID,
-  clientSecret: process.env.OIDC_CLIENT_SECRET,
-  authorizationURL: `${baseUri}/auth`,
-  userInfoURL: `${baseUri}/me`,
-  tokenURL: `${baseUri}/token`,
-  callbackURL: process.env.OIDC_REDIRECT_URI,
-  passReqToCallback: true
+passport.use(new OneLoginStrategy({
+issuer: baseUri,
+clientID: process.env.OIDC_CLIENT_ID,
+clientSecret: process.env.OIDC_CLIENT_SECRET,
+authorizationURL: `${baseUri}/auth`,
+userInfoURL: `${baseUri}/me`,
+tokenURL: `${baseUri}/token`,
+callbackURL: process.env.OIDC_REDIRECT_URI,
+passReqToCallback: true
 },
 function(req, issuer, userId, profile, accessToken, refreshToken, params, cb) {
 
@@ -26,23 +35,17 @@ function(req, issuer, userId, profile, accessToken, refreshToken, params, cb) {
   console.log('params:', params);
 
   req.session.accessToken = accessToken;
-
+  _token=accessToken;
   return cb(null, profile);
 }));
 
-  passport.serializeUser((user, done) => {
-    done(null, user);
-  });
+passport.serializeUser((user, done) => {
+  done(null, user);
+});
 
-  passport.deserializeUser((user, done) => {
-    done(null, user);
-  });
-
-app.use(cors());
-app.use(express.json());
-app.use(require('express-session')({ secret: 'test1300', resave: false, saveUninitialized: false }));
-app.use(passport.initialize());
-app.use(passport.session());
+passport.deserializeUser((user, done) => {
+  done(null, user);
+});
 
 app.get("/login/sso",
     passport.authenticate('openidconnect', 
@@ -61,25 +64,25 @@ app.get('/oauth/callback', passport.authenticate('openidconnect', {
 app.get('/success', (req, res) => {
     res.redirect('http://localhost:3000/home');
     //res.json({ message: "Authentication succeded!" });
+    //res.json({ message: `${_token}` });
 });
 
 app.get('/failure', (req, res) => {
     res.json({ message: "Authentication failed!" });
 });
 
-app.get('/message', (req, res) => {
-    console.log('Request Authentication Status: ' + req.isAuthenticated());
-    res.json({ message: "Welcome to App page!" });
-});
+function checkAuthentication(req,res,next){
+  if(req.isAuthenticated()){
+      next();
+  } else{
+      res.redirect("/login/sso");
+  }
+}
 
-app.get('/homePageMessage', (req, res) => {
-    res.json({ message: "Authentication succeded! \n Welcome to Home page!" });
-});
+app.use('/home', checkAuthentication, home);
 
-app.post('/api/stuff', (req, res, next) => {
-    console.log(req.body);
-    // res.status(201).json({ message: 'Congratulations! ' + req.body['firstParam'] + req.body['secondParam'] });
-    res.status(201).json({ message: 'Click Below to login' });
+app.get('/welcomeMessage', (req, res) => {
+  res.json({ message: "Click Below to login" });
 });
 
 app.listen(8000, () => {
