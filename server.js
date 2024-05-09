@@ -1,19 +1,24 @@
+//#region Libraries
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const passport = require('passport');
 const OneLoginStrategy = require('passport-openidconnect').Strategy;
 const app = express();
-var _token="";
+var _token = "";
+//#endregion
 
+//#region Middlewares
 app.use(cors());
 app.use(express.json());
 app.use(require('express-session')({ secret: 'test100', resave: false, saveUninitialized: false }));
 app.use(passport.initialize());
 app.use(passport.session());
+//#endregion
 
 var home = require('./home');
 
+//#region Configure Passport Start
 const baseUri = `${ process.env.OIDC_BASE_URI }/oidc/2`;
 
 passport.use(new OneLoginStrategy({
@@ -46,7 +51,9 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser((user, done) => {
   done(null, user);
 });
+//#endregion
 
+//#region Authentication
 app.get("/login/sso",
     passport.authenticate('openidconnect', 
     {
@@ -78,15 +85,22 @@ function checkAuthentication(req,res,next){
       res.redirect("/login/sso");
   }
 }
+//#endregion
 
+//#region Routes
 app.use('/home', checkAuthentication, home);
+//#endregion
 
+//#region Unauthenticated API's
 app.get('/welcomeMessage', (req, res) => {
   res.json({ message: "Click Below to login" });
 });
+//#endregion
 
+//#region Others
 app.listen(8000, () => {
     console.log(`Server is running on port 8000.`);
 });
 
 module.exports = app;
+//#endregion
