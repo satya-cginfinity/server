@@ -81,9 +81,10 @@ app.get('/failure', (req, res) => {
 });
 
 function checkAuthentication(req,res,next){
-  var token = req.header('access-token');
+  var headerToken = req.header('access-token');
+  var localToken = JSON.parse(sessionStorage.getItem(_id));
 
-  if(token == JSON.parse(sessionStorage.getItem(_id))){
+  if(headerToken == localToken){
     next();
   } else{
     //res.render("http://localhost:3000/");
