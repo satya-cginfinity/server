@@ -11,7 +11,7 @@ const app = express();
 //#region Middlewares
 app.use(cors());
 app.use(express.json());
-app.use(require('express-session')({ secret: 'secretKey', resave: false, saveUninitialized: false }));
+app.use(require('express-session')({ secret: process.env.SECRET_KEY, resave: false, saveUninitialized: false }));
 app.use(passport.initialize());
 app.use(passport.session());
 //#endregion
