@@ -86,7 +86,6 @@ function checkAuthentication(req,res,next){
   if(token == JSON.parse(sessionStorage.getItem(_id))){
     next();
   } else{
-    //res.send('<script>window.location.href="http://localhost:3000/";</script>');
     //res.render("http://localhost:3000/");
     res.json({ message: "Authentication failed! \n Please Login!" });
   }
