@@ -72,7 +72,8 @@ app.get('/oauth/callback', passport.authenticate('openidconnect', {
   }));
 
 app.get('/success', (req, res) => {
-    res.redirect(`http://localhost:3000/home?id=${_id}`);
+    res.cookie("access-token", JSON.parse(sessionStorage.getItem(_id)));
+    res.redirect(`http://localhost:3000/home`);
 });
 
 app.get('/failure', (req, res) => {
@@ -81,12 +82,12 @@ app.get('/failure', (req, res) => {
 
 function checkAuthentication(req,res,next){
   var token = req.header('access-token');
-  req.session.accessToken = token;
-  var v = req.isAuthenticated();
 
   if(token == JSON.parse(sessionStorage.getItem(_id))){
     next();
   } else{
+    //res.send('<script>window.location.href="http://localhost:3000/";</script>');
+    //res.render("http://localhost:3000/");
     res.json({ message: "Authentication failed! \n Please Login!" });
   }
 
@@ -105,13 +106,6 @@ app.use('/home', checkAuthentication, home);
 //#region Unauthenticated API's
 app.get('/welcomeMessage', (req, res) => {
   res.json({ message: "Click Below to login" });
-});
-
-app.post('/api/requestToken', (req, res, next) => {
-  var key = req.body['key'];
-  const tokenString = sessionStorage.getItem(key);
-  const accessToken = JSON.parse(tokenString);
-  res.status(201).json({ message: accessToken });
 });
 //#endregion
 
