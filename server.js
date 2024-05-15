@@ -4,7 +4,8 @@ const express = require('express');
 const cors = require('cors');
 const passport = require('passport');
 const OneLoginStrategy = require('passport-openidconnect').Strategy;
-const sessionStorage = require('sessionstorage')
+const sessionStorage = require('sessionstorage');
+const jwt  = require('jsonwebtoken');
 const app = express();
 //#endregion
 
@@ -81,21 +82,31 @@ app.get('/failure', (req, res) => {
 });
 
 function checkAuthentication(req,res,next){
+  var issValid = false;
+  var tokenIsNotExpired = false;
+  var isTokenValid = false;
+  try{
   var headerToken = req.header('access-token');
-  var localToken = JSON.parse(sessionStorage.getItem(_id));
 
-  if(headerToken == localToken){
-    next();
-  } else{
-    //res.render("http://localhost:3000/");
-    res.json({ message: "Authentication failed! \n Please Login!" });
+  var token =  jwt.decode(headerToken);
+  issValid = token.iss === baseUri;
+
+  var currentTimestamp = new Date().getTime() / 1000;
+  tokenIsNotExpired = token.exp > currentTimestamp;
+
+  isTokenValid = issValid && tokenIsNotExpired;
   }
+  catch{}
 
-  // if(req.isAuthenticated()){
-  //     next();
-  // } else{
-  //     res.redirect("/login/sso");
-  // }
+  if(isTokenValid){
+    next();
+  } else if(issValid && !tokenIsNotExpired){
+    res.json({ message: process.env.TOKEN_EXPIRED });
+  }
+  else{
+    res.statusCode = 400;
+    res.json({ message: process.env.UNAUTHENTICATED });
+  }
 }
 //#endregion
 
