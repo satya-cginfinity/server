@@ -11,12 +11,6 @@ router.get('/message', (req, res) => {
     res.json({ message: "Welcome to App page!" });
 });
 
-router.get('/homePageMessage', (req, res) => {
-    var token = req.header('access-token');
-    var user = util.getuserdetails(token); 
-    res.json({ message: "Welcome "+ user.name +". Your email id is " + user.email + "." });
-});
-
 router.get('/userdetails', (req, res) => {
     var token = req.header('access-token');
     var user = util.getuserdetails(token); 
